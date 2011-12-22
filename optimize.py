@@ -41,7 +41,7 @@ def cost(features, weights, ratings, regularization=0):
 	unrated = ratings == 0 # zero indicates unrated; these movies should not contribute to the cost
 	h = hypothesis(features, weights)
 	h[unrated] = 0
-	return 0.5*sum(power(h-ratings, 2))
+	return 0.5*sum(power(h-ratings, 2)) + regularization / 2 * (sum(power(features, 2)) + sum(power(weights, 2)))
 
 def grad_features(features, weights, ratings, regularization=0):
 	'''Calculate the gradients of the cost function with respect to the features.'''
@@ -51,7 +51,7 @@ def grad_features(features, weights, ratings, regularization=0):
 	# Ignore unrated
 	h[unrated] = 0
 
-	return (h-ratings) * weights
+	return (h-ratings) * weights + regularization * features
 
 def grad_weights(features, weights, ratings, regularization=0):
 	'''Calculate the gradients of the cost function with respect to the weights.'''
@@ -61,4 +61,4 @@ def grad_weights(features, weights, ratings, regularization=0):
 	# Ignore unrated
 	h[unrated] = 0
 
-	return (h-ratings).T * features
+	return (h-ratings).T * features + regularization * weights

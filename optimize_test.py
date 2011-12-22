@@ -22,6 +22,11 @@ class TestOptimize:
 		cost = optimize.cost(self.features, self.weights, self.ratings)
 		assert abs(cost - 22.22) < epsilon
 
+	def test_initial_cost_r(self):
+		cost = optimize.cost(self.features, self.weights, self.ratings, regularization=1.5)
+		assert abs(cost - 31.34) < epsilon
+
+
 class TestGradientNumerically:
 	def setup(self):
 		# Initial guesses
@@ -46,6 +51,18 @@ class TestGradientNumerically:
 	def test_grad_features(self):
 		numeric = numerical_grad_features(self.features, self.weights, self.ratings)
 		analytical = optimize.grad_features(self.features, self.weights, self.ratings)
+
+		assert all(abs(numeric - analytical) < epsilon)
+
+	def test_grad_weights_r(self):
+		numeric = numerical_grad_weights(self.features, self.weights, self.ratings, regularization=1.5)
+		analytical = optimize.grad_weights(self.features, self.weights, self.ratings, regularization=1.5)
+
+		assert all(abs(numeric - analytical) < epsilon)
+
+	def test_grad_features_r(self):
+		numeric = numerical_grad_features(self.features, self.weights, self.ratings, regularization=1.5)
+		analytical = optimize.grad_features(self.features, self.weights, self.ratings, regularization=1.5)
 
 		assert all(abs(numeric - analytical) < epsilon)
 
