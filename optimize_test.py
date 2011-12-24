@@ -2,9 +2,12 @@ import optimize
 from dataset import dataset,params
 from numpy.random import rand
 from numpy import *
+from nose.tools import timed
+from nose.plugins import prof
 
 epsilon = 0.01
 
+# Nosetests unit tests for the optimize module
 class TestOptimize:
 	def setup(self):
 		features = params['X']
@@ -26,6 +29,28 @@ class TestOptimize:
 		cost = optimize.cost(self.features, self.weights, self.ratings, regularization=1.5)
 		assert abs(cost - 31.34) < epsilon
 
+	def test_cost_reduced(self):
+		cost_before = optimize.cost(self.features, self.weights, self.ratings, regularization=1.5)
+		features, weights = optimize.optimize(self.features, self.weights, self.ratings, regularization=1.5)
+		cost_after = optimize.cost(features, weights, self.ratings, regularization=1.5)
+		assert cost_after < cost_before
+
+class TestTime:
+	def setup(self):
+		self.features = params['X']
+		self.weights = params['Theta']
+		self.ratings = dataset['Y']
+		self.rated = dataset['R']
+		num_users = 50
+		num_movies = 50
+		num_features = 3
+		self.features = self.features[:num_movies, :num_features]
+		self.weights = self.weights[:num_users, :num_features]
+		self.ratings = self.ratings[:num_movies, :num_users];
+
+	@timed(20)
+	def test_cost_reduced(self):
+		features, weights = optimize.optimize(self.features, self.weights, self.ratings, regularization=1.5)
 
 class TestGradientNumerically:
 	def setup(self):
@@ -67,7 +92,7 @@ class TestGradientNumerically:
 		assert all(abs(numeric - analytical) < epsilon)
 
 def numerical_grad_weights(features, weights, ratings, regularization=0):
-	'''Compute the gradient of the cost_function with respect to the eights'''
+	'''Compute the gradient of the cost_function with respect to the weights'''
 	e = 1e-4
 	perturb = zeros(weights.shape)
 	grad = zeros(weights.shape)
@@ -107,3 +132,46 @@ def numerical_grad_features(features, weights, ratings, regularization=0):
 		flat_grad[i] = (cost2-cost1) / (2*e)
 
 	return grad
+
+# When the script is run directly, plot the learning curves instead
+if __name__ == '__main__':
+	import matplotlib.pyplot as plt
+
+	class LearningCurve(object):
+		def __init__(self, features, weights, ratings, xfeatures, xratings):
+			self.costs = []
+			self.xcosts = []
+			self.ratings = ratings
+			self.xratings = xratings
+			self.xfeatures = xfeatures
+			optimize.optimize(features, weights, ratings, callback=self.update)
+
+		def update(self, features, weights, *args):
+			self.costs.append(optimize.cost(features, weights, self.ratings))
+			self.xcosts.append(optimize.cost(self.xfeatures, weights, self.xratings))
+			print self.costs[-1]
+
+		def plot(self):
+			plt.subplot('211')
+			plt.plot(self.costs)
+			plt.subplot('212')
+			plt.plot(self.xcosts)
+
+	features = params['X']
+	weights = params['Theta']
+	ratings = dataset['Y']
+	rated = dataset['R']
+	num_users = 200
+	num_movies = 500
+	num_features = 3
+	features = features[:num_movies, :num_features]
+	weights = weights[:num_users, :num_features]
+	ratings = ratings[:num_movies, :num_users];
+
+	# Rest of the movies make up cross validation set
+	xfeatures = params['X'][num_movies:, :num_features]
+	xratings = dataset['Y'][num_movies:, :num_users];
+
+	LearningCurve(features, weights, ratings, xfeatures, xratings).plot()
+
+	plt.show()
