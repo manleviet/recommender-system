@@ -4,9 +4,7 @@ from functools import wraps
 
 def hypothesis(features, weights):
 	'''Predict ratings given features and weights'''
-	features = matrix(features)
-	weights = matrix(weights)
-	return features * weights.T
+	return dot(features, transpose(weights))
 
 def optimize(features, weights, ratings, regularization = 0, callback = None):
 	assert features.shape[1] == weights.shape[1]
@@ -20,8 +18,8 @@ def optimize(features, weights, ratings, regularization = 0, callback = None):
 	# Helper function to unpack the array into two matrices
 	def unpack(x):
 		x=x.reshape((num_movies + num_users, num_features))
-		features = matrix(x[:num_movies, :])
-		weights = matrix(x[num_movies:, :])
+		features = x[:num_movies, :]
+		weights = x[num_movies:, :]
 		return (features, weights)
 
 	# Wrap the callback with a function to unpack the params
@@ -40,9 +38,6 @@ def optimize(features, weights, ratings, regularization = 0, callback = None):
 
 	def fprime(x, *args):
 		features,weights = unpack(x)
-		#g0 = grad_features(features, weights, ratings)
-		#g1 = grad_weights(features, weights, ratings)
-		#return array(vstack((g0, g1))).flatten()
 		unrated = ratings == 0
 		h = hypothesis(features, weights)
 
@@ -75,7 +70,7 @@ def grad_features(features, weights, ratings, regularization=0):
 	# Ignore unrated
 	h[unrated] = 0
 
-	return (h-ratings) * weights + regularization * features
+	return dot((h-ratings), weights) + regularization * features
 
 def grad_weights(features, weights, ratings, regularization=0):
 	'''Calculate the gradients of the cost function with respect to the weights.'''
@@ -85,4 +80,4 @@ def grad_weights(features, weights, ratings, regularization=0):
 	# Ignore unrated
 	h[unrated] = 0
 
-	return (h-ratings).T * features + regularization * weights
+	return dot(transpose(h-ratings), features) + regularization * weights
