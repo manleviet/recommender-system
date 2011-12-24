@@ -1,4 +1,6 @@
 from numpy import *
+from scipy.optimize import fmin_ncg
+from functools import wraps
 
 def hypothesis(features, weights):
 	'''Predict ratings given features and weights'''
@@ -7,31 +9,53 @@ def hypothesis(features, weights):
 	return features * weights.T
 
 def optimize(features, weights, ratings, regularization = 0, callback = None):
-	assert features.shape == weight.shape
+	assert features.shape[1] == weights.shape[1]
 
-	# Stack in 3rd dimension so fmin_ncg gets a single array
-	x0 = dstack(features, weights)
+	num_movies, num_features = features.shape
+	num_users = weights.shape[0]
+
+	# Stack verically so fmin_ncg gets a single array
+	x0 = vstack((features, weights)).flatten()
+
+	# Helper function to unpack the array into two matrices
+	def unpack(x):
+		x=x.reshape((num_movies + num_users, num_features))
+		features = matrix(x[:num_movies, :])
+		weights = matrix(x[num_movies:, :])
+		return (features, weights)
+
+	# Wrap the callback with a function to unpack the params
+	if callback:
+		@wraps(callback)
+		def new_callback(x, *args):
+			f,w = unpack(x)
+			callback(f, w, *args)
+	else:
+		new_callback = None
 
 	# Helper functions to calculate cost and gradient
 	def f(x, *args):
-		features = matrix(x[:,:,0])
-		weights = matrix(x[:,:,1])
-		return self.cost(features, weights, ratings)
+		features,weights = unpack(x)
+		return cost(features, weights, ratings)
 
 	def fprime(x, *args):
-		features = matrix(x[:,:,0])
-		weights = matrix(x[:,:,1])
-		g0 = self.grad_features(features, weights, ratings)
-		g2 = self.grad_weights(features, weights, ratings)
-		return dstack(g0, g2)
+		features,weights = unpack(x)
+		#g0 = grad_features(features, weights, ratings)
+		#g1 = grad_weights(features, weights, ratings)
+		#return array(vstack((g0, g1))).flatten()
+		unrated = ratings == 0
+		h = hypothesis(features, weights)
 
-	x = fmin_ncg(f, x0, fprime, callback=callback)
+		# Ignore unrated
+		h[unrated] = 0
 
-	# Unwrap feature and weight matrices
-	features = params[:,:,0]
-	weights = params[:,:,1]
+		g0 = dot((h-ratings), weights) + regularization * features
+		g1 = dot(transpose(h-ratings), features) + regularization * weights
+		return array(vstack((g0, g1))).flatten()
 
-	return (features, weights)
+	x = fmin_ncg(f, x0, fprime, callback=new_callback)
+
+	return unpack(x)
 
 def cost(features, weights, ratings, regularization=0):
 	'''Calculate the cost of the current feature set and weights, given the ratings.
