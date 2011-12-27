@@ -53,8 +53,8 @@ def optimize(features, weights, ratings, regularization = 0, callback = None):
 		features, weights = unpack(x)
 
 		# calculate second derivitives for each feature
-		h0 = -dot(ones((num_movies, num_users)), weights) + regularization
-		h1 = -dot(ones((num_users, num_movies)), features) + regularization
+		h0 = dot(ones((num_movies, num_users)), weights) + regularization
+		h1 = dot(ones((num_users, num_movies)), features) + regularization
 		return array(vstack((h0, h1))).flatten()
 
 	x = fmin_ncg(f, x0, fprime, callback=new_callback)
