@@ -1,4 +1,5 @@
 import optimize
+
 from dataset import dataset,params
 from numpy.random import rand
 from numpy import *
@@ -8,7 +9,7 @@ from nose.plugins import prof
 epsilon = 0.01
 
 # Nosetests unit tests for the optimize module
-class TestOptimize:
+class TestOptimize(object):
 	def setup(self):
 		features = params['X']
 		weights = params['Theta']
@@ -22,27 +23,27 @@ class TestOptimize:
 		self.ratings = ratings[:num_movies, :num_users];
 
 	def test_initial_cost(self):
-		cost = optimize.cost(self.features, self.weights, self.ratings)
+		cost = optimize.Optimizer.cost(self.features, self.weights, self.ratings)
 		assert abs(cost - 22.22) < epsilon
 
 	def test_initial_cost_r(self):
-		cost = optimize.cost(self.features, self.weights, self.ratings, regularization=1.5)
+		cost = optimize.Optimizer.cost(self.features, self.weights, self.ratings, regularization=1.5)
 		assert abs(cost - 31.34) < epsilon
 
 	def test_cost_reduced(self):
-		cost_before = optimize.cost(self.features, self.weights, self.ratings, regularization=1.5)
-		features, weights = optimize.optimize(self.features, self.weights, self.ratings, regularization=1.5)
-		cost_after = optimize.cost(features, weights, self.ratings, regularization=1.5)
+		cost_before = optimize.Optimizer.cost(self.features, self.weights, self.ratings, regularization=1.5)
+		features, weights = optimize.Optimizer.optimize(self.features, self.weights, self.ratings, regularization=1.5)
+		cost_after = optimize.Optimizer.cost(features, weights, self.ratings, regularization=1.5)
 		assert cost_after < cost_before
 
-class TestTime:
+class TestTime(object):
 	def setup(self):
 		self.features = params['X']
 		self.weights = params['Theta']
 		self.ratings = dataset['Y']
 		self.rated = dataset['R']
-		num_users = 50
-		num_movies = 50
+		num_users = 100
+		num_movies = 140
 		num_features = 3
 		self.features = self.features[:num_movies, :num_features]
 		self.weights = self.weights[:num_users, :num_features]
@@ -50,9 +51,9 @@ class TestTime:
 
 	@timed(20)
 	def test_cost_reduced(self):
-		features, weights = optimize.optimize(self.features, self.weights, self.ratings, regularization=1.5)
+		features, weights = optimize.Optimizer.optimize(self.features, self.weights, self.ratings, regularization=1.5)
 
-class TestGradientNumerically:
+class TestGradientNumerically(object):
 	def setup(self):
 		# Initial guesses
 		self.features = matrix(rand(4, 3))
@@ -67,27 +68,21 @@ class TestGradientNumerically:
 		# Remove some ratings
 		self.ratings[rand(4,5) > 0.5] = 0
 
-	def test_grad_weights(self):
-		numeric = numerical_grad_weights(self.features, self.weights, self.ratings)
-		analytical = optimize.grad_weights(self.features, self.weights, self.ratings)
+	def test_grad(self):
+		optimizer = optimize.Optimizer(self.features, self.weights, self.ratings)
+		numeric_f = numerical_grad_features(self.features, self.weights, self.ratings)
+		numeric_w = numerical_grad_weights(self.features, self.weights, self.ratings)
+		numeric = vstack((numeric_f, numeric_w)).flatten()
+		analytical = optimizer.fprime(optimizer.x)
 
 		assert all(abs(numeric - analytical) < epsilon)
 
-	def test_grad_features(self):
-		numeric = numerical_grad_features(self.features, self.weights, self.ratings)
-		analytical = optimize.grad_features(self.features, self.weights, self.ratings)
-
-		assert all(abs(numeric - analytical) < epsilon)
-
-	def test_grad_weights_r(self):
-		numeric = numerical_grad_weights(self.features, self.weights, self.ratings, regularization=1.5)
-		analytical = optimize.grad_weights(self.features, self.weights, self.ratings, regularization=1.5)
-
-		assert all(abs(numeric - analytical) < epsilon)
-
-	def test_grad_features_r(self):
-		numeric = numerical_grad_features(self.features, self.weights, self.ratings, regularization=1.5)
-		analytical = optimize.grad_features(self.features, self.weights, self.ratings, regularization=1.5)
+	def test_grad_r(self):
+		optimizer = optimize.Optimizer(self.features, self.weights, self.ratings, regularization=1.5)
+		numeric_f = numerical_grad_features(self.features, self.weights, self.ratings, regularization=1.5)
+		numeric_w = numerical_grad_weights(self.features, self.weights, self.ratings, regularization=1.5)
+		numeric = vstack((numeric_f, numeric_w)).flatten()
+		analytical = optimizer.fprime(optimizer.x)
 
 		assert all(abs(numeric - analytical) < epsilon)
 
@@ -104,8 +99,8 @@ def numerical_grad_weights(features, weights, ratings, regularization=0):
 	for i in range(weights.size):
 		flat_perturb[i] = e
 
-		cost1 = optimize.cost(features, weights - perturb, ratings, regularization)
-		cost2 = optimize.cost(features, weights + perturb, ratings, regularization)
+		cost1 = optimize.Optimizer.cost(features, weights - perturb, ratings, regularization)
+		cost2 = optimize.Optimizer.cost(features, weights + perturb, ratings, regularization)
 
 		flat_perturb[i] = 0
 		flat_grad[i] = (cost2-cost1) / (2*e)
@@ -125,8 +120,8 @@ def numerical_grad_features(features, weights, ratings, regularization=0):
 	for i in range(features.size):
 		flat_perturb[i] = e
 
-		cost1 = optimize.cost(features - perturb, weights, ratings, regularization)
-		cost2 = optimize.cost(features + perturb, weights, ratings, regularization)
+		cost1 = optimize.Optimizer.cost(features - perturb, weights, ratings, regularization)
+		cost2 = optimize.Optimizer.cost(features + perturb, weights, ratings, regularization)
 
 		flat_perturb[i] = 0
 		flat_grad[i] = (cost2-cost1) / (2*e)
@@ -144,11 +139,11 @@ if __name__ == '__main__':
 			self.ratings = ratings
 			self.xratings = xratings
 			self.xfeatures = xfeatures
-			optimize.optimize(features, weights, ratings, callback=self.update)
+			optimize.Optimizer.optimize(features, weights, ratings, callback=self.update)
 
 		def update(self, features, weights, *args):
-			self.costs.append(optimize.cost(features, weights, self.ratings))
-			self.xcosts.append(optimize.cost(self.xfeatures, weights, self.xratings))
+			self.costs.append(optimize.Optimizer.cost(features, weights, self.ratings))
+			self.xcosts.append(optimize.Optimizer.cost(self.xfeatures, weights, self.xratings))
 			print self.costs[-1]
 
 		def plot(self):
