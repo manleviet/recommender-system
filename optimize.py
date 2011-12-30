@@ -84,12 +84,3 @@ class Optimizer(object):
 		g0 = dot((h-self.ratings), weights) + self.regularization * features
 		g1 = dot(transpose(h-self.ratings), features) + self.regularization * weights
 		return array(vstack((g0, g1))).flatten()
-
-	def fhess_p(self, x, *args):
-		'''Return a vector of second derivitives of the cost function with respect to each feature and weight. This is the Hessian Matrix (which is diagonal) times a vector.'''
-		features, weights = self.unpack(x)
-
-		# calculate second derivitives for each feature
-		h0 = dot(ones((self.num_movies, self.num_users)), weights) + self.regularization
-		h1 = dot(ones((self.num_users, self.num_movies)), features) + self.regularization
-		return array(vstack((h0, h1))).flatten()
