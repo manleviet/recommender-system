@@ -7,7 +7,7 @@ create table movie (
 
 -- User ratings
 create table rating (
-	rating_id integer constraint rating_pk primary_key,
+	rating_id integer constraint rating_pk primary key,
 	movie_id integer constraint rating_movie_id_fk references movie(movie_id) on delete cascade constraint rating_movie_id_u unique,
 	rating integer
 );
@@ -33,11 +33,15 @@ create view recommendation as
 		sum(weight * value) as score
 	from
 		movie
-		inner join (
-			movie_feature on (preference.feature_id = movie_feature.feature_id and movie.movie_id = movie_feature.movie_id)
-			inner join preference on (preference.feature_id = movie_feature.feature_id)
-		)
+		inner join movie_feature on (movie.movie_id = movie_feature.movie_id)
+		inner join preference on (preference.feature_id = movie_feature.feature_id)
 	where movie.movie_id not in (select movie_id from rating)
 	group by movie.movie_id
 	order by score desc
 ;
+
+create virtual table movie_search using fts3(name, movie_id);
+create trigger populate_movie_search after insert on movie
+begin
+	insert into movie_search(name, movie_id) values(new.name, new.movie_id);
+end
