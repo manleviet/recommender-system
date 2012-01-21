@@ -50,7 +50,7 @@ class TestTime(object):
 		#self.weights = self.weights[:num_users, :num_features]
 		#self.ratings = self.ratings[:num_movies, :num_users];
 
-	@timed(0.47)
+	@timed(0.6)
 	def test_cost(self):
 		self.optimizer.f(self.optimizer.x)
 		self.optimizer.fprime(self.optimizer.x)
