@@ -55,13 +55,9 @@ class TestTime(object):
 		self.optimizer.f(self.optimizer.x)
 		self.optimizer.fprime(self.optimizer.x)
 
-#	@timed(20)
-#	def test_cost_reduced(self):
-#		calls=[0]
-#		def foo(f,w):
-#			calls[0] += 1
-#			print '%d: %g' % (calls[0], optimize.Optimizer.cost(f,w,self.ratings, 1.5))
-#		features, weights = optimize.Optimizer.optimize(self.features, self.weights, self.ratings, regularization=1.5,callback=foo)
+	@timed(60)
+	def test_optimize(self):
+		features, weights = optimize.Optimizer.optimize(self.features, self.weights, self.ratings, regularization=1.5, maxiter=100)
 
 class TestGradientNumerically(object):
 	def setup(self):

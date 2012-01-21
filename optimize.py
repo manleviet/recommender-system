@@ -1,14 +1,14 @@
 from numpy import *
-from scipy.optimize import fmin_ncg
+from scipy.optimize import fmin_cg
 from functools import wraps
 
 class Optimizer(object):
 	'''Optimize the features/weights to minimise Optimizer.cost'''
 
 	@staticmethod
-	def optimize(features, weights, ratings, regularization = 0, callback=None):
+	def optimize(features, weights, ratings, regularization = 0, callback=None, **kwargs):
 		'''Returns the optimum features and weights'''
-		return Optimizer(features, weights, ratings, regularization, callback).run()
+		return Optimizer(features, weights, ratings, regularization, callback, **kwargs).run()
 
 	@staticmethod
 	def cost(features, weights, ratings, regularization=0):
@@ -25,7 +25,7 @@ class Optimizer(object):
 		'''Predict ratings given features and weights'''
 		return dot(features, transpose(weights))
 
-	def __init__(self, features, weights, ratings, regularization = 0, callback = None):
+	def __init__(self, features, weights, ratings, regularization = 0, callback = None, **kwargs):
 		'''Initialize an optimizer object. It is not neccessary to call this directly, as the static optimize method returns the optimal parameters.'''
 		assert features.shape[1] == weights.shape[1]
 	
@@ -50,10 +50,11 @@ class Optimizer(object):
 			new_callback = None
 
 		self.callback = new_callback
+		self.options = kwargs
 
 	def run(self):
 		'''Run the optimization and return the optimal parameters.'''
-		self.x = fmin_ncg(self.f, self.x, self.fprime, callback=self.callback)
+		self.x = fmin_cg(self.f, self.x, self.fprime, callback=self.callback, **self.options)
 		return self.params()
 
 	def unpack(self, x):
