@@ -16,10 +16,9 @@ class Optimizer(object):
 		Ratings is a matrix num_movies x num_users.
 		Features is a matrix num_movies x num_features
 		Weights is a matrix num_users x num_features'''
-		unrated = ratings == 0 # zero indicates unrated; these movies should not contribute to the cost
-		h = Optimizer.hypothesis(features, weights)
-		h[unrated] = 0
-		return 0.5*sum(power(h-ratings, 2)) + regularization / 2 * (sum(power(features, 2)) + sum(power(weights, 2)))
+		rated = ratings != 0
+		h = dot(features, transpose(weights))[rated]
+		return 0.5 * sum(power(h-ratings[rated], 2)) + regularization / 2 * (sum(power(features, 2)) + sum(power(weights, 2)))
 
 	@staticmethod
 	def hypothesis(features, weights):
@@ -35,8 +34,10 @@ class Optimizer(object):
 
 		# Stack vertically so fmin_ncg gets a single array
 		self.x = vstack((features, weights)).flatten()
+		assert len(self.x.shape) == 1
 
-		self.ratings = ratings
+		self.rated = ratings != 0
+		self.ratings = ratings[self.rated]
 		self.regularization = regularization
 
 		# Wrap the callback with a function to unpack the params
@@ -57,9 +58,9 @@ class Optimizer(object):
 
 	def unpack(self, x):
 		'''Helper function to unpack the feature array into two matrices.'''
-		x = x.reshape((self.num_movies + self.num_users, self.num_features))
-		features = x[:self.num_movies, :]
-		weights = x[self.num_movies:, :]
+		boundary = self.num_movies * self.num_features
+		features = x[:boundary].reshape((self.num_movies, self.num_features))
+		weights = x[boundary:].reshape((self.num_users, self.num_features))
 		return (features, weights)
 
 	def params(self):
@@ -70,17 +71,18 @@ class Optimizer(object):
 	def f(self, x, *args):
 		'''Calculate the cost'''
 		features, weights = self.unpack(x)
-		return Optimizer.cost(features, weights, self.ratings, self.regularization)
+		h = Optimizer.hypothesis(features, weights)[self.rated]
+
+		return 0.5*sum(power(h-self.ratings, 2)) + self.regularization / 2 * (sum(power(features, 2)) + sum(power(weights, 2)))
+
 
 	def fprime(self, x, *args):
 		'''Calculate the gradients of the cost function with respect to each feature and weight.'''
 		features, weights = self.unpack(x)
-		unrated = self.ratings == 0
 		h = Optimizer.hypothesis(features, weights)
 
-		# Ignore unrated
-		h[unrated] = 0
-
-		g0 = dot((h-self.ratings), weights) + self.regularization * features
-		g1 = dot(transpose(h-self.ratings), features) + self.regularization * weights
+		diffs = zeros(h.shape)
+		diffs[self.rated] = h[self.rated] - self.ratings
+		g0 = dot(diffs, weights) + self.regularization * features
+		g1 = dot(transpose(diffs), features) + self.regularization * weights
 		return array(vstack((g0, g1))).flatten()

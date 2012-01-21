@@ -26,6 +26,7 @@ create table preference (
 	weight float
 );
 
+-- Recommendations
 create view recommendation as
 	select
 		movie.name,
@@ -40,8 +41,13 @@ create view recommendation as
 	order by score desc
 ;
 
-create virtual table movie_search using fts3(name, movie_id);
+-- Search
+create virtual table movie_search using fts3 (
+	name,
+	movie_id integer constraint movie_search_movie_id_fk references movie(movie_id)
+);
+
 create trigger populate_movie_search after insert on movie
 begin
 	insert into movie_search(name, movie_id) values(new.name, new.movie_id);
-end
+end;

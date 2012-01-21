@@ -42,28 +42,38 @@ class TestTime(object):
 		self.weights = params['Theta']
 		self.ratings = dataset['Y']
 		self.rated = dataset['R']
-		num_users = 100
-		num_movies = 140
-		num_features = 3
-		self.features = self.features[:num_movies, :num_features]
-		self.weights = self.weights[:num_users, :num_features]
-		self.ratings = self.ratings[:num_movies, :num_users];
+		self.optimizer = optimize.Optimizer(self.features,self.weights,self.ratings,1.5)
+		#num_users = 100
+		#num_movies = 140
+		#num_features = 3
+		#self.features = self.features[:num_movies, :num_features]
+		#self.weights = self.weights[:num_users, :num_features]
+		#self.ratings = self.ratings[:num_movies, :num_users];
 
-	@timed(20)
-	def test_cost_reduced(self):
-		features, weights = optimize.Optimizer.optimize(self.features, self.weights, self.ratings, regularization=1.5)
+	@timed(0.47)
+	def test_cost(self):
+		self.optimizer.f(self.optimizer.x)
+		self.optimizer.fprime(self.optimizer.x)
+
+#	@timed(20)
+#	def test_cost_reduced(self):
+#		calls=[0]
+#		def foo(f,w):
+#			calls[0] += 1
+#			print '%d: %g' % (calls[0], optimize.Optimizer.cost(f,w,self.ratings, 1.5))
+#		features, weights = optimize.Optimizer.optimize(self.features, self.weights, self.ratings, regularization=1.5,callback=foo)
 
 class TestGradientNumerically(object):
 	def setup(self):
 		# Initial guesses
-		self.features = matrix(rand(4, 3))
-		self.weights = matrix(rand(5,3))
+		self.features = rand(4, 3)
+		self.weights = rand(5,3)
 
 		# Used to generate ratings
-		true_features = matrix(rand(4, 3))
-		true_weights = matrix(rand(5,3))
+		true_features = rand(4, 3)
+		true_weights = rand(5,3)
 
-		self.ratings = true_features * true_weights.T
+		self.ratings = dot(true_features, transpose(true_weights))
 
 		# Remove some ratings
 		self.ratings[rand(4,5) > 0.5] = 0
@@ -73,7 +83,10 @@ class TestGradientNumerically(object):
 		numeric_f = numerical_grad_features(self.features, self.weights, self.ratings)
 		numeric_w = numerical_grad_weights(self.features, self.weights, self.ratings)
 		numeric = vstack((numeric_f, numeric_w)).flatten()
+		assert numeric.shape == (27,)
+		assert optimizer.x.shape == (27,)
 		analytical = optimizer.fprime(optimizer.x)
+		assert analytical.shape == (27,)
 
 		assert all(abs(numeric - analytical) < epsilon)
 
