@@ -1,5 +1,8 @@
+'''ORM for movie table.'''
+
+# pylint: disable-msg=E1101,R0903
 from sqlalchemy import Table
-from sqlalchemy.orm import mapper, join, relation, backref
+from sqlalchemy.orm import mapper, join, relation
 import db
 import rating
 
@@ -14,9 +17,10 @@ class Movie(object):
 		self.year = year
 
 	@classmethod
-	def search(self, session, name):
+	def search(cls, session, name):
 		'''Search for a movie'''
-		j = join(movie_search_table, movie_table, movie_search_table.c.movie_id == Movie.movie_id)
+		j = join(movie_search_table, movie_table,
+				movie_search_table.c.movie_id == Movie.movie_id)
 		q = session.query(Movie).select_from(j)
 		return q.filter(movie_search_table.c.name.match(name))
 
@@ -26,7 +30,8 @@ mapper(Movie, movie_table, properties = {
 
 
 if __name__ == '__main__':
-	session = db.Session()
+	# Test
+	s = db.Session()
 
-	for row in Movie.search(session, 'story'):
+	for row in Movie.search(s, 'story'):
 		print row.year, row.name

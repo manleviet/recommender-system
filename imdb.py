@@ -1,3 +1,4 @@
+'''Standalone script to load imdb ratings from a CSV file into the database'''
 import db
 import csv
 import movie
